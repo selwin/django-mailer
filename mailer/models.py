@@ -87,7 +87,7 @@ class Message(models.Model):
         if self.message_data == "":
             return None
         else:
-            return pickle.loads(self.message_data.encode("ascii"))
+            return pickle.loads(self.message_data.encode("utf-8"))
     
     def _set_email(self, val):
         self.message_data = pickle.dumps(val)
