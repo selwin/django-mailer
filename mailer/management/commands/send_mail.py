@@ -1,10 +1,17 @@
 import logging
+import signal
 
 from django.conf import settings
 from django.core.management.base import NoArgsCommand
 
 from mailer.engine import send_all
 
+#Limit script run time to 1 hour
+def signal_handler(signum, frame):
+    raise Exception("Timed out!")
+
+signal.signal(signal.SIGALRM, signal_handler)
+signal.alarm(3600)
 
 # allow a sysadmin to pause the sending of mail temporarily.
 PAUSE_SEND = getattr(settings, "MAILER_PAUSE_SEND", False)
