@@ -1,3 +1,4 @@
+import base64
 import logging
 import pickle
 
@@ -60,6 +61,26 @@ class MessageManager(models.Manager):
         return count
 
 
+def email_to_db(email):
+    # pickle.dumps returns essentially binary data which we need to encode
+    # to store in a unicode field.
+    return base64.encodestring(pickle.dumps(email))
+
+
+def db_to_email(data):
+    if data == u"":
+        return None
+    else:
+        try:
+            return pickle.loads(base64.decodestring(data))
+        except Exception:
+            try:
+                # previous method was to just do pickle.dumps(val)
+                return pickle.loads(data.encode("ascii"))
+            except Exception:
+                return None
+
+
 class Message(models.Model):
     
     # The actual data - a pickled EmailMessage
@@ -90,8 +111,8 @@ class Message(models.Model):
             return pickle.loads(self.message_data.encode("utf-8"))
     
     def _set_email(self, val):
-        self.message_data = pickle.dumps(val)
-    
+        self.message_data = email_to_db(val)
+
     email = property(_get_email, _set_email, doc=
                      """EmailMessage object. If this is mutated, you will need to
 set the attribute again to cause the underlying serialised data to be updated.""")
@@ -153,10 +174,13 @@ class DontSendEntryManager(models.Manager):
         is the given address on the don't send list?
         """
         
-        if self.filter(to_address__iexact=address).exists():
-            return True
-        else:
-            return False
+        queryset = self.filter(to_address__iexact=address)
+        try:
+            # Django 1.2
+            return queryset.exists()
+        except AttributeError:
+            # AttributeError: 'QuerySet' object has no attribute 'exists'
+            return bool(queryset.count())
 
 
 class DontSendEntry(models.Model):
@@ -189,7 +213,7 @@ class MessageLogManager(models.Manager):
         record the given result and (optionally) a log message
         """
         
-        message_log = self.create(
+        return self.create(
             message_data = message.message_data,
             when_added = message.when_added,
             priority = message.priority,
@@ -197,7 +221,6 @@ class MessageLogManager(models.Manager):
             result = result_code,
             log_message = log_message,
         )
-        message_log.save()
 
 
 class MessageLog(models.Model):
@@ -217,10 +240,7 @@ class MessageLog(models.Model):
     
     @property
     def email(self):
-        if self.message_data == "":
-            return None
-        else:
-            return pickle.loads(self.message_data.encode("ascii"))
+        return db_to_email(self.message_data)
     
     @property
     def to_addresses(self):
