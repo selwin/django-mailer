@@ -108,7 +108,16 @@ class Message(models.Model):
         if self.message_data == "":
             return None
         else:
-            return pickle.loads(self.message_data.encode("utf-8"))
+            # for unknown reason, we have data that contains \r\n which cause the system to be failed
+            try:
+                return pickle.loads(self.message_data.encode("utf-8"))
+            except ImportError:
+                self.message_data = self.message_data.replace("\r\n", "\n")
+                self.save()
+                return pickle.loads(self.message_data.encode("utf-8"))
+            # Sometimes we also get objects that don't get pickled properly
+            except (UnicodeDecodeError, EOFError):
+                return None
     
     def _set_email(self, val):
         self.message_data = email_to_db(val)
