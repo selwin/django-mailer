@@ -79,11 +79,14 @@ def send_all():
                     connection = get_connection(backend=EMAIL_BACKEND)
                 logging.info("sending message '%s' to %s" % (message.subject.encode("utf-8"), u", ".join(message.to_addresses).encode("utf-8")))
                 email = message.email
-                email.connection = connection
-                email.send()
+                # If message_data is mangled sometimes we don't get a proper
+                # email object, if this is the case, delete this
+                if email:
+                    email.connection = connection
+                    email.send()
+                    sent += 1
                 MessageLog.objects.log(message, 1) # @@@ avoid using literal result code
                 message.delete()
-                sent += 1
             except (socket_error, smtplib.SMTPSenderRefused, smtplib.SMTPRecipientsRefused, smtplib.SMTPAuthenticationError), err:
                 message.defer()
                 logging.info("message deferred due to failure: %s" % err)
