@@ -174,7 +174,7 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
                          (message.to_address.encode("utf-8"),
                           message.subject.encode("utf-8")))
             opened_connection = smtp_connection.open()
-            message.email_message.send()
+            message.email_message(connection=opened_connection).send()
             queued_message.delete()
             result = constants.RESULT_SENT
         except (SocketError, smtplib.SMTPSenderRefused,

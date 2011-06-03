@@ -34,8 +34,7 @@ class Message(models.Model):
 
     def __unicode__(self):
         return '%s: %s' % (self.to_address, self.subject)
-            
-    @property    
+
     def email_message(self, connection=None):
         subject = force_unicode(self.subject)
         return EmailMessage(subject, self.message, self.from_address,
