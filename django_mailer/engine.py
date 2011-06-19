@@ -86,7 +86,7 @@ def send_all(block_size=500, backend=None):
         blacklist = models.Blacklist.objects.values_list('email', flat=True)
         connection.open()
         for message in _message_queue(block_size):
-            result = send_queued_message(message, smtp_connection=connection,
+            result = send_queued_message(message, connection=connection,
                                   blacklist=blacklist)
             if result == constants.RESULT_SENT:
                 sent += 1
@@ -128,7 +128,7 @@ def send_loop(empty_queue_sleep=None):
         send_all()
 
 
-def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
+def send_queued_message(queued_message, connection=None, blacklist=None,
                  log=True):
     """
     Send a queued message, returning a response code as to the action taken.
@@ -138,9 +138,9 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
     ``RESULT_FAILED`` for a deferred message or ``RESULT_SENT`` for a
     successful sent message.
 
-    To allow optimizations if multiple messages are to be sent, an SMTP
+    To allow optimizations if multiple messages are to be sent, a
     connection can be provided and a list of blacklisted email addresses.
-    Otherwise an SMTP connection will be opened to send this message and the
+    Otherwise a new connection will be opened to send this message and the
     email recipient address checked against the ``Blacklist`` table.
 
     If the message recipient is blacklisted, the message will be removed from
@@ -153,8 +153,8 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
 
     """
     message = queued_message.message
-    if smtp_connection is None:
-        smtp_connection = get_connection()
+    if connection is None:
+        connection = get_connection()
     opened_connection = False
 
     if blacklist is None:
@@ -173,7 +173,7 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
             logger.info("Sending message to %s: %s" %
                          (message.to_address.encode("utf-8"),
                           message.subject.encode("utf-8")))
-            opened_connection = smtp_connection.open()
+            opened_connection = connection.open()
             message.email_message(connection=opened_connection).send()
             queued_message.delete()
             result = constants.RESULT_SENT
@@ -190,11 +190,11 @@ def send_queued_message(queued_message, smtp_connection=None, blacklist=None,
                                   log_message=log_message)
 
     if opened_connection:
-        smtp_connection.close()
+        connection.close()
     return result
 
 
-def send_message(email_message, smtp_connection=None):
+def send_message(email_message, connection=None):
     """
     Send an EmailMessage, returning a response code as to the action taken.
 
@@ -202,15 +202,15 @@ def send_message(email_message, smtp_connection=None):
     response will be either ``RESULT_FAILED`` for a failed send or
     ``RESULT_SENT`` for a successfully sent message.
 
-    To allow optimizations if multiple messages are to be sent, an SMTP
-    connection can be provided. Otherwise an SMTP connection will be opened
+    To allow optimizations if multiple messages are to be sent, a
+    connection can be provided. Otherwise a new connection will be opened
     to send this message.
 
     This function does not perform any logging or queueing.
 
     """
-    if smtp_connection is None:
-        smtp_connection = get_connection()
+    if connection is None:
+        connection = get_connection()
     opened_connection = False
 
     try:
@@ -222,5 +222,5 @@ def send_message(email_message, smtp_connection=None):
         result = constants.RESULT_FAILED
 
     if opened_connection:
-        smtp_connection.close()
+        connection.close()
     return result
