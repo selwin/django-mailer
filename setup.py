@@ -1,27 +1,29 @@
 from distutils.core import setup
+from django_mailer import get_version
 
 
 setup(
-    name="django-mailer",
-    version=__import__("mailer").__version__,
-    description="A reusable Django app for queuing the sending of email",
-    long_description=open("docs/usage.txt").read(),
-    author="James Tauber",
-    author_email="jtauber@jtauber.com",
-    url="http://code.google.com/p/django-mailer/",
+    name='django-mailer-2',
+    version=get_version(),
+    description=("A reusable Django app for queueing the sending of email "
+                 "(forked from James Tauber's django-mailer)"),
+    long_description=open('docs/usage.txt').read(),
+    author='Chris Beaven',
+    author_email='smileychris@gmail.com',
+    url='http://github.com/SmileyChris/django-mailer-2',
     packages=[
-        "mailer",
-        "mailer.management",
-        "mailer.management.commands",
+        'django_mailer',
+        'django_mailer.management',
+        'django_mailer.management.commands',
+        'django_mailer.tests',
     ],
-    package_dir={"mailer": "mailer"},
     classifiers=[
-        "Development Status :: 4 - Beta",
-        "Environment :: Web Environment",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python",
-        "Framework :: Django",
+        'Development Status :: 4 - Beta',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Framework :: Django',
     ]
 )
