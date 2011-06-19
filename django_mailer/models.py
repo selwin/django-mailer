@@ -1,5 +1,9 @@
+from django.conf import settings
+from django.core.mail import EmailMessage
 from django.db import models
 from django_mailer import constants, managers
+from django.utils.encoding import force_unicode
+
 import datetime
 
 
@@ -18,19 +22,12 @@ RESULT_CODES = (
 
 class Message(models.Model):
     """
-    An email message.
-    
-    The ``to_address``, ``from_address`` and ``subject`` fields are merely for
-    easy of access for these common values. The ``encoded_message`` field
-    contains the entire encoded email message ready to be sent to an SMTP
-    connection.
-    
+    A model to hold email information.    
     """
     to_address = models.CharField(max_length=200)
     from_address = models.CharField(max_length=200)
     subject = models.CharField(max_length=255)
-
-    encoded_message = models.TextField()
+    message = models.TextField()
     date_created = models.DateTimeField(default=datetime.datetime.now)
 
     class Meta:
@@ -38,6 +35,11 @@ class Message(models.Model):
 
     def __unicode__(self):
         return '%s: %s' % (self.to_address, self.subject)
+
+    def email_message(self, connection=None):
+        subject = force_unicode(self.subject)
+        return EmailMessage(subject, self.message, self.from_address,
+                            [self.to_address], connection=connection)
 
 
 class QueuedMessage(models.Model):
