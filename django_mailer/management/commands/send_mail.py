@@ -44,7 +44,7 @@ class Command(NoArgsCommand):
         # if PAUSE_SEND is turned on don't do anything.
         if not settings.PAUSE_SEND:
             if EMAIL_BACKEND_SUPPORT:
-                send_all(block_size, backend=settings.USE_BACKEND)
+                send_all(block_size, backend=settings.MAILER_BACKEND)
             else:
                 send_all(block_size)
         else:

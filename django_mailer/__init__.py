@@ -108,7 +108,7 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
         if constants.EMAIL_BACKEND_SUPPORT:
             from django.core.mail import get_connection
             from django_mailer.engine import send_message
-            connection = get_connection(backend=settings.USE_BACKEND)
+            connection = get_connection(backend=settings.MAILER_BACKEND)
             result = send_message(email_message, connection=connection)
             return (result == constants.RESULT_SENT)
         else:
