@@ -155,8 +155,10 @@ def send_queued_message(queued_message, connection=None, blacklist=None,
     message = queued_message.message
     if connection is None:
         connection = get_connection()
-
-    opened_connection = False
+        connection.open()
+        arg_connection = False
+    else:
+        arg_connection = True
 
     if blacklist is None:
         blacklisted = models.Blacklist.objects.filter(email=message.to_address)
@@ -174,8 +176,8 @@ def send_queued_message(queued_message, connection=None, blacklist=None,
             logger.info("Sending message to %s: %s" %
                          (message.to_address.encode("utf-8"),
                           message.subject.encode("utf-8")))
-            opened_connection = connection.open()
-            message.email_message(connection=opened_connection).send()
+            #opened_connection = connection.open()
+            message.email_message(connection=connection).send()
             queued_message.delete()
             result = constants.RESULT_SENT
         except (SocketError, smtplib.SMTPSenderRefused,
@@ -190,7 +192,7 @@ def send_queued_message(queued_message, connection=None, blacklist=None,
         models.Log.objects.create(message=message, result=result,
                                   log_message=log_message)
 
-    if opened_connection:
+    if not arg_connection:
         connection.close()
     return result
 
