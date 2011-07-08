@@ -2,7 +2,8 @@ from django.core import mail
 from django.conf import settings as django_settings
 from django.test import TestCase
 from django_mailer import engine, settings, send_mail
-from django_mailer.models import QueuedMessage
+from django_mailer.engine import send_queued_message
+from django_mailer.models import QueuedMessage, Blacklist
 from django_mailer.lockfile import FileLock
 
 from StringIO import StringIO
@@ -103,6 +104,39 @@ class EngineTest(TestCase):
         super(EngineTest, self).tearDown()
         django_settings.EMAIL_BACKEND = self.old_backend
     
+    def test_send_queued_message(self):
+        """
+        Ensure that send_queued_message properly delivers email, regardless
+        of whether connection is passed in.
+        """
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message, self.connection)
+        self.assertEqual(len(self.mail.outbox), 1)
+        
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message)
+        self.assertEqual(len(self.mail.outbox), 2)
+
+    
+    def test_blacklist(self):
+        """
+        Test that blacklist works properly
+        """
+        Blacklist.objects.create(email='foo@bar.com')
+        send_mail('Subject', 'Body', 'from@example.com', ['foo@bar.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message)
+        self.assertEqual(len(self.mail.outbox), 0)
+        
+        # Explicitly passing in list of blacklisted addresses should also work
+        send_mail('Subject', 'Body', 'from@example.com', ['bar@foo.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message, blacklist=['bar@foo.com'])
+        self.assertEqual(len(self.mail.outbox), 0)
+
+
     def test_sending_email_uses_opened_connection(self):
         """
         Test that send_queued_message command uses the connection that gets
@@ -112,10 +146,21 @@ class EngineTest(TestCase):
         we should still get the proper result since send_queued_message uses
         the connection we passed in.
         """
-        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
-        queued_message = QueuedMessage.objects.latest('id')
         django_settings.EMAIL_BACKEND = \
             'django.core.mail.backends.dummy.EmailBackend'
-        engine.send_queued_message(queued_message, self.connection)        
+        # Outbox should be empty because send_queued_message uses dummy backend
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message)
+        self.assertEqual(len(self.mail.outbox), 0)
+
+        # Outbox should be populated because send_queued_message uses
+        # the connection we passed in (locmem)
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message, self.connection)
         self.assertEqual(len(self.mail.outbox), 1)
+        
+        
+        
     
