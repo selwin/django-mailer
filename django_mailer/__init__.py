@@ -1,5 +1,8 @@
 import logging
 
+from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.utils.encoding import force_unicode
+
 VERSION = (1, 1, 0, "alpha")
 
 logger = logging.getLogger('django_mailer')
@@ -26,13 +29,29 @@ def send_mail(subject, message, from_email, recipient_list,
     arguments are not used.
 
     """
-    from django.core.mail import EmailMessage
-    from django.utils.encoding import force_unicode
+    
 
     subject = force_unicode(subject)
     email_message = EmailMessage(subject, message, from_email,
                                  recipient_list)
     queue_email_message(email_message, priority=priority)
+
+
+def send_html_mail(subject, message, html_message, from_email, recipient_list,
+                   fail_silently=False, auth_user=None, auth_password=None,
+                   priority=None):
+    """
+    Add a new html email to the mail queue. This is largely the same as the
+    ``send_mail`` method above, the only difference being that it passes an
+    `EmailMultiAlternatives`` instance instead of ``EmailMessage`` to 
+    ``queue_email_message``
+    """
+    subject = force_unicode(subject)
+    email_message = EmailMultiAlternatives(subject, message, from_email,
+                                           recipient_list)
+    email_message.attach_alternative(html_message, "text/html")
+    queue_email_message(email_message, priority=priority,
+                        html_message=html_message)
 
 
 def mail_admins(subject, message, fail_silently=False, priority=None):
@@ -83,7 +102,8 @@ def mail_managers(subject, message, fail_silently=False, priority=None):
     send_mail(subject, message, from_email, recipient_list, priority=priority)
 
 
-def queue_email_message(email_message, fail_silently=False, priority=None):
+def queue_email_message(email_message, fail_silently=False, priority=None,
+                        html_message=''):
     """
     Add new messages to the email queue.
 
@@ -117,7 +137,8 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
     for to_email in email_message.recipients():
         message = models.Message.objects.create(
             to_address=to_email, from_address=email_message.from_email,
-            subject=email_message.subject, message=email_message.body)
+            subject=email_message.subject, message=email_message.body,
+            html_message=html_message)
         queued_message = models.QueuedMessage(message=message)
         if priority:
             queued_message.priority = priority

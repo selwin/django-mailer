@@ -1,7 +1,7 @@
 from django.core import mail
 from django.conf import settings as django_settings
 from django.test import TestCase
-from django_mailer import engine, settings, send_mail
+from django_mailer import engine, settings, send_mail, send_html_mail
 from django_mailer.engine import send_queued_message
 from django_mailer.models import QueuedMessage, Blacklist
 from django_mailer.lockfile import FileLock
@@ -118,6 +118,18 @@ class EngineTest(TestCase):
         queued_message = QueuedMessage.objects.latest('id')
         send_queued_message(queued_message)
         self.assertEqual(len(self.mail.outbox), 2)
+        
+        send_html_mail('Subject', 'Body', '<p>HTML</p>', 'from@example.com',
+                       ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message, self.connection)
+        self.assertEqual(len(self.mail.outbox), 3)
+        
+        send_html_mail('Subject', 'Body', '<p>HTML</p>', 'from@example.com',
+                       ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        send_queued_message(queued_message)
+        self.assertEqual(len(self.mail.outbox), 4)
 
     
     def test_blacklist(self):

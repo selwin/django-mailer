@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.db import models
 from django_mailer import constants, managers
 from django.utils.encoding import force_unicode
@@ -28,6 +28,7 @@ class Message(models.Model):
     from_address = models.CharField(max_length=200)
     subject = models.CharField(max_length=255)
     message = models.TextField()
+    html_message = models.TextField(blank=True)
     date_created = models.DateTimeField(default=datetime.datetime.now)
 
     class Meta:
@@ -37,9 +38,20 @@ class Message(models.Model):
         return '%s: %s' % (self.to_address, self.subject)
 
     def email_message(self, connection=None):
+        """
+        Returns a django ``EmailMessage`` or ``EmailMultiAlternatives`` object
+        from a ``Message`` instance, depending on whether html_message is empty.
+        """
         subject = force_unicode(self.subject)
-        return EmailMessage(subject, self.message, self.from_address,
-                            [self.to_address], connection=connection)
+        if self.html_message:
+            msg = EmailMultiAlternatives(subject, self.message,
+                                         self.from_address, [self.to_address],
+                                         connection=connection)
+            msg.attach_alternative(self.html_message, "text/html")
+            return msg
+        else:
+            return EmailMessage(subject, self.message, self.from_address,
+                                [self.to_address], connection=connection)
 
 
 class QueuedMessage(models.Model):
