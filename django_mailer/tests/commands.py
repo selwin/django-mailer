@@ -1,6 +1,8 @@
+from django.conf import settings as django_settings
 from django.core import mail
 from django.core.management import call_command
-from django_mailer import models
+
+from django_mailer import models, settings
 from django_mailer.tests.base import MailerTestCase
 import datetime
 
@@ -10,6 +12,12 @@ class TestCommands(MailerTestCase):
     A test case for management commands provided by django-mailer.
 
     """
+    
+    def setUp(self):
+        super(TestCommands, self).setUp()
+        settings.MAILER_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+
+        
     def test_send_mail(self):
         """
         The ``send_mail`` command initiates the sending of messages in the
