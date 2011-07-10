@@ -165,7 +165,6 @@ def send_queued_message(queued_message, connection=None, blacklist=None,
     else:
         blacklisted = message.to_address in blacklist
 
-    log_message = ''
     if blacklisted:
         logger.info("Not sending to blacklisted email: %s" %
                      message.to_address.encode("utf-8"))
@@ -205,16 +204,21 @@ def send_message(message, connection=None):
         message.email_message(connection=connection).send()
         message.queuedmessage.delete()
         result = constants.RESULT_SENT
-    except (SocketError, smtplib.SMTPSenderRefused,
-            smtplib.SMTPRecipientsRefused,
-            smtplib.SMTPAuthenticationError), err:
-        message.queuedmessage.defer()
+        log_message = 'Sent'
+    except Exception, err:
+        # Defer emails if errors require manual intervention to fix
+        fatal_errors = (SocketError, smtplib.SMTPSenderRefused,
+                        smtplib.SMTPRecipientsRefused,
+                        smtplib.SMTPAuthenticationError)
+        if isinstance(err, fatal_errors):
+            message.queuedmessage.defer()
         logger.warning("Message to %s deferred due to failure: %s" %
                         (message.to_address.encode("utf-8"), err))
         log_message = unicode(err)
         result = constants.RESULT_FAILED
-        models.Log.objects.create(message=message, result=result,
-                                  log_message=log_message)
+    
+    models.Log.objects.create(message=message, result=result,
+                              log_message=log_message)
 
     if opened_connection:
         connection.close()

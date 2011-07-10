@@ -171,8 +171,47 @@ class EngineTest(TestCase):
         send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
         queued_message = QueuedMessage.objects.latest('id')
         engine.send_queued_message(queued_message, self.connection)
-        self.assertEqual(len(self.mail.outbox), 1)
+        self.assertEqual(len(self.mail.outbox), 1)        
+
+
+class ErrorHandlingTest(TestCase):
+
+    def setUp(self):
+        self.old_backend = django_settings.EMAIL_BACKEND
+        django_settings.EMAIL_BACKEND = \
+            'django_mailer.tests.base.RecipientErrorBackend'
+
+    def tearDown(self):
+        super(ErrorHandlingTest, self).tearDown()
+        django_settings.EMAIL_BACKEND = self.old_backend    
+
+    def test_queue_not_deleted_on_error(self):            
+        """
+        Queued message instance shouldn't be deleted when error is raised
+        during sending
+        """
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message)
+        self.assertEqual(QueuedMessage.objects.count(), 1)
+    
+    def test_message_deferred(self):            
+        """
+        When error returned requires manual intervention to fix, 
+        emails should be deferred.
+        """
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        self.assertEqual(queued_message.deferred, None)
+        engine.send_queued_message(queued_message)
+        queued_message = QueuedMessage.objects.latest('id')
+        self.assertNotEqual(queued_message.deferred, None)
         
-        
-        
+        # If we see some other random errors email shouldn't be deferred
+        django_settings.EMAIL_BACKEND = \
+            'django_mailer.tests.base.OtherErrorBackend'
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message)
+        self.assertEqual(queued_message.deferred, None)
     
