@@ -124,15 +124,6 @@ def queue_email_message(email_message, fail_silently=False, priority=None,
         priority = email_message.extra_headers.pop(constants.PRIORITY_HEADER)
         priority = constants.PRIORITIES.get(priority.lower())
 
-    if priority == constants.PRIORITY_EMAIL_NOW:
-        if constants.EMAIL_BACKEND_SUPPORT:
-            from django.core.mail import get_connection
-            from django_mailer.engine import send_message
-            connection = get_connection(backend=settings.MAILER_BACKEND)
-            result = send_message(email_message, connection=connection)
-            return (result == constants.RESULT_SENT)
-        else:
-            return email_message.send()
     count = 0
     for to_email in email_message.recipients():
         message = models.Message.objects.create(
@@ -144,6 +135,14 @@ def queue_email_message(email_message, fail_silently=False, priority=None,
             queued_message.priority = priority
         queued_message.save()
         count += 1
+
+        if priority == constants.PRIORITY_EMAIL_NOW:
+            from django.core.mail import get_connection
+            from django_mailer.engine import send_message
+            connection = get_connection(backend=settings.MAILER_BACKEND)
+            result = send_message(message, connection=connection)
+            return (result == constants.RESULT_SENT)
+    
     return count
 
 

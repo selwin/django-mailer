@@ -172,32 +172,14 @@ def send_queued_message(queued_message, connection=None, blacklist=None,
         queued_message.delete()
         result = constants.RESULT_SKIPPED
     else:
-        try:
-            logger.info("Sending message to %s: %s" %
-                         (message.to_address.encode("utf-8"),
-                          message.subject.encode("utf-8")))
-            #opened_connection = connection.open()
-            message.email_message(connection=connection).send()
-            queued_message.delete()
-            result = constants.RESULT_SENT
-        except (SocketError, smtplib.SMTPSenderRefused,
-                smtplib.SMTPRecipientsRefused,
-                smtplib.SMTPAuthenticationError), err:
-            queued_message.defer()
-            logger.warning("Message to %s deferred due to failure: %s" %
-                            (message.to_address.encode("utf-8"), err))
-            log_message = unicode(err)
-            result = constants.RESULT_FAILED
-    if log:
-        models.Log.objects.create(message=message, result=result,
-                                  log_message=log_message)
+        result = send_message(message, connection=connection)
 
     if not arg_connection:
         connection.close()
     return result
 
 
-def send_message(email_message, connection=None):
+def send_message(message, connection=None):
     """
     Send an EmailMessage, returning a response code as to the action taken.
 
@@ -217,12 +199,22 @@ def send_message(email_message, connection=None):
     opened_connection = False
 
     try:
-        email_message.send()
+        logger.info("Sending message to %s: %s" %
+                     (message.to_address.encode("utf-8"),
+                      message.subject.encode("utf-8")))
+        message.email_message(connection=connection).send()
+        message.queuedmessage.delete()
         result = constants.RESULT_SENT
     except (SocketError, smtplib.SMTPSenderRefused,
             smtplib.SMTPRecipientsRefused,
-            smtplib.SMTPAuthenticationError):
+            smtplib.SMTPAuthenticationError), err:
+        message.queuedmessage.defer()
+        logger.warning("Message to %s deferred due to failure: %s" %
+                        (message.to_address.encode("utf-8"), err))
+        log_message = unicode(err)
         result = constants.RESULT_FAILED
+        models.Log.objects.create(message=message, result=result,
+                                  log_message=log_message)
 
     if opened_connection:
         connection.close()

@@ -1,14 +1,12 @@
+from django.core import mail
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.test import TestCase
 
-from django_mailer import send_mail, send_html_mail
-from django_mailer.models import Message
+from django_mailer import constants, send_mail, send_html_mail
+from django_mailer.models import Message, QueuedMessage
 
 class MailerModelTest(TestCase):
     
-    def setUp(self):
-        pass
-        
     def test_email_message(self):
         """
         Test to make sure that Message model's "email_message" method
@@ -45,6 +43,7 @@ class MailerModelTest(TestCase):
         self.assertEqual(message.message, content)
         self.assertEqual(message.from_address, from_address)
         self.assertEqual(message.to_address, to_addresses[1])
+
     
     def test_send_html_mail(self):
         """
@@ -63,3 +62,16 @@ class MailerModelTest(TestCase):
         self.assertEqual(message.html_message, html_content)
         self.assertEqual(message.from_address, from_address)
         self.assertEqual(message.to_address, to_address[0])
+
+    
+    def test_send_priority_now(self):
+        """
+        If send_mail is called with priority of "NOW", the message should
+        get sent right away and the QueuedMessage instance deleted
+        """
+        send_mail('Subject', 'Body', 'foo@bar.com', ['to1@example.com'],
+                  priority=constants.PRIORITY_EMAIL_NOW)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(QueuedMessage.objects.count(), 0)
+        
+        
