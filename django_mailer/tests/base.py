@@ -1,3 +1,5 @@
+from smtplib import SMTPRecipientsRefused
+
 from django.core import mail
 from django.test import TestCase
 from django_mailer import queue_email_message
@@ -25,20 +27,23 @@ class FakeConnection(object):
         mail.outbox.append(message)
 
 
-if EMAIL_BACKEND_SUPPORT:
-    class TestEmailBackend(backends.base.BaseEmailBackend):
-        '''
-        An EmailBackend used in place of the default
-        django.core.mail.backends.smtp.EmailBackend.
-
-        '''
-        def __init__(self, fail_silently=False, **kwargs):
-            super(TestEmailBackend, self).__init__(fail_silently=fail_silently)
-            self.connection = FakeConnection()
-            
-        def send_messages(self, email_messages):
-            pass
+class RecipientErrorBackend(backends.base.BaseEmailBackend):
+    '''
+    An EmailBackend that always raises an error during sending
+    to test if django_mailer handles sending error correctly
+    '''
+    def send_messages(self, email_messages):
+        raise SMTPRecipientsRefused('Fake Error')
         
+
+class OtherErrorBackend(backends.base.BaseEmailBackend):
+    '''
+    An EmailBackend that always raises an error during sending
+    to test if django_mailer handles sending error correctly
+    '''
+    def send_messages(self, email_messages):
+        raise Exception('Fake Error')
+
 
 class MailerTestCase(TestCase):
     """
