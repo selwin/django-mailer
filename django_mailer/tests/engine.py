@@ -1,9 +1,10 @@
 from django.core import mail
 from django.conf import settings as django_settings
 from django.test import TestCase
-from django_mailer import engine, settings, send_mail, send_html_mail
+from django_mailer import (constants, engine, settings, send_mail,
+                           send_html_mail)
 from django_mailer.engine import send_queued_message
-from django_mailer.models import QueuedMessage, Blacklist
+from django_mailer.models import Blacklist, Log, QueuedMessage
 from django_mailer.lockfile import FileLock
 
 from StringIO import StringIO
@@ -171,7 +172,20 @@ class EngineTest(TestCase):
         send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
         queued_message = QueuedMessage.objects.latest('id')
         engine.send_queued_message(queued_message, self.connection)
-        self.assertEqual(len(self.mail.outbox), 1)        
+        self.assertEqual(len(self.mail.outbox), 1)
+
+    def test_log(self):
+        """
+        All emails sent through django_mailer should be logged,
+        even those having "now" priority
+        """
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message, self.connection)
+        self.assertEqual(Log.objects.count(), 1)
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'],
+                  priority=constants.PRIORITIES['now'])
+        self.assertEqual(Log.objects.count(), 2)
 
 
 class ErrorHandlingTest(TestCase):
@@ -194,6 +208,7 @@ class ErrorHandlingTest(TestCase):
         queued_message = QueuedMessage.objects.latest('id')
         engine.send_queued_message(queued_message)
         self.assertEqual(QueuedMessage.objects.count(), 1)
+
     
     def test_message_deferred(self):            
         """
