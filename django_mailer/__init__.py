@@ -108,8 +108,8 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
         if constants.EMAIL_BACKEND_SUPPORT:
             from django.core.mail import get_connection
             from django_mailer.engine import send_message
-            connection = get_connection(backend=settings.USE_BACKEND)
-            result = send_message(email_message, smtp_connection=connection)
+            connection = get_connection(backend=settings.MAILER_BACKEND)
+            result = send_message(email_message, connection=connection)
             return (result == constants.RESULT_SENT)
         else:
             return email_message.send()
@@ -117,8 +117,7 @@ def queue_email_message(email_message, fail_silently=False, priority=None):
     for to_email in email_message.recipients():
         message = models.Message.objects.create(
             to_address=to_email, from_address=email_message.from_email,
-            subject=email_message.subject,
-            encoded_message=email_message.message().as_string())
+            subject=email_message.subject, message=email_message.body)
         queued_message = models.QueuedMessage(message=message)
         if priority:
             queued_message.priority = priority

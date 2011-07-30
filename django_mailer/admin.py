@@ -5,7 +5,7 @@ from django_mailer import models
 class Message(admin.ModelAdmin):
     list_display = ('to_address', 'subject', 'date_created')
     list_filter = ('date_created',)
-    search_fields = ('to_address', 'subject', 'from_address', 'encoded_message',)
+    search_fields = ('to_address', 'subject', 'from_address', 'message',)
     date_hierarchy = 'date_created'
     ordering = ('-date_created',)
 

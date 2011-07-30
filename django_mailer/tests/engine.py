@@ -1,6 +1,10 @@
+from django.core import mail
+from django.conf import settings as django_settings
 from django.test import TestCase
-from django_mailer import engine, settings
+from django_mailer import engine, settings, send_mail
+from django_mailer.models import QueuedMessage
 from django_mailer.lockfile import FileLock
+
 from StringIO import StringIO
 import logging
 import time
@@ -82,3 +86,36 @@ class LockTest(TestCase):
                              'Lock already in place. Exiting.')
         finally:
             time.time = original_time
+
+
+class EngineTest(TestCase):
+    
+    
+    def setUp(self):
+        self.old_backend = django_settings.EMAIL_BACKEND
+        django_settings.EMAIL_BACKEND = \
+            'django.core.mail.backends.locmem.EmailBackend'
+        from django.core import mail
+        self.mail = mail
+        self.connection = self.mail.get_connection()
+    
+    def tearDown(self):
+        super(EngineTest, self).tearDown()
+        django_settings.EMAIL_BACKEND = self.old_backend
+    
+    def test_sending_email_uses_opened_connection(self):
+        """
+        Test that send_queued_message command uses the connection that gets
+        passed in as an argument. Connection stored in self is an instance of 
+        locmem email backend. If we override the email backend with a dummy backend
+        but passed in the previously opened connection from locmem backend, 
+        we should still get the proper result since send_queued_message uses
+        the connection we passed in.
+        """
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        django_settings.EMAIL_BACKEND = \
+            'django.core.mail.backends.dummy.EmailBackend'
+        engine.send_queued_message(queued_message, self.connection)        
+        self.assertEqual(len(self.mail.outbox), 1)
+    

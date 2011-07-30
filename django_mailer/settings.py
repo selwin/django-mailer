@@ -4,8 +4,10 @@ from django_mailer import constants
 # Provide a way of temporarily pausing the sending of mail.
 PAUSE_SEND = getattr(settings, "MAILER_PAUSE_SEND", False)
 
-USE_BACKEND = getattr(settings, 'MAILER_USE_BACKEND',
-                      'django.core.mail.backends.smtp.EmailBackend')
+if hasattr(settings, 'MAILER_USE_BACKEND'):
+    MAILER_BACKEND = getattr(settings, 'MAILER_USE_BACKEND')
+else:
+    MAILER_BACKEND = getattr(settings, 'EMAIL_BACKEND')
 
 # Default priorities for the mail_admins and mail_managers methods.
 MAIL_ADMINS_PRIORITY = getattr(settings, 'MAILER_MAIL_ADMINS_PRIORITY',

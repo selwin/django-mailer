@@ -46,23 +46,6 @@ class MailerTestCase(TestCase):
     buffer and provides some helper methods.
     
     """
-    def setUp(self):
-        if EMAIL_BACKEND_SUPPORT:
-            self.saved_email_backend = backends.smtp.EmailBackend
-            backends.smtp.EmailBackend = TestEmailBackend
-        else:
-            connection = mail.SMTPConnection
-            if hasattr(connection, 'connection'):
-                connection.pretest_connection = connection.connection
-            connection.connection = FakeConnection()
-
-    def tearDown(self):
-        if EMAIL_BACKEND_SUPPORT:
-            backends.smtp.EmailBackend = self.saved_email_backend
-        else:
-            connection = mail.SMTPConnection
-            if hasattr(connection, 'pretest_connection'):
-                connection.connection = connection.pretest_connection
 
     def queue_message(self, subject='test', message='a test message',
                       from_email='sender@djangomailer',
