@@ -1,8 +1,5 @@
 import logging
 
-from django.core.mail import EmailMessage, EmailMultiAlternatives
-from django.utils.encoding import force_unicode
-
 VERSION = (1, 1, 0, "alpha")
 
 logger = logging.getLogger('django_mailer')
@@ -29,7 +26,8 @@ def send_mail(subject, message, from_email, recipient_list,
     arguments are not used.
 
     """
-    
+    from django.core.mail import EmailMessage
+    from django.utils.encoding import force_unicode
 
     subject = force_unicode(subject)
     email_message = EmailMessage(subject, message, from_email,
@@ -46,6 +44,9 @@ def send_html_mail(subject, message, html_message, from_email, recipient_list,
     `EmailMultiAlternatives`` instance instead of ``EmailMessage`` to 
     ``queue_email_message``
     """
+    from django.core.mail import EmailMultiAlternatives
+    from django.utils.encoding import force_unicode
+
     subject = force_unicode(subject)
     email_message = EmailMultiAlternatives(subject, message, from_email,
                                            recipient_list)
