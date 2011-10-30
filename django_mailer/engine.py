@@ -4,14 +4,15 @@ The "engine room" of django mailer.
 Methods here actually handle the sending of queued messages.
 
 """
+
 from django_mailer import constants, models, settings
 from lockfile import FileLock, AlreadyLocked, LockTimeout
 from socket import error as SocketError
 import logging
+import os
 import smtplib
 import tempfile
 import time
-import os
 
 if constants.EMAIL_BACKEND_SUPPORT:
     from django.core.mail import get_connection
