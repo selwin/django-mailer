@@ -3,6 +3,7 @@ from smtplib import SMTPRecipientsRefused
 from django.core import mail
 from django.test import TestCase
 from django_mailer import queue_email_message
+from django_mailer.tests.exceptions import DeferOnError
 try:
     from django.core.mail import backends
     EMAIL_BACKEND_SUPPORT = True
@@ -44,6 +45,14 @@ class OtherErrorBackend(backends.base.BaseEmailBackend):
     def send_messages(self, email_messages):
         raise Exception('Fake Error')
 
+
+class DeferOnErrorBackend(backends.base.BaseEmailBackend):
+    '''
+    An EmailBackend that always raises a FakeMailerException
+    for testing purposes
+    '''
+    def send_messages(self, email_messages):
+        raise DeferOnError('Defer this')
 
 class MailerTestCase(TestCase):
     """

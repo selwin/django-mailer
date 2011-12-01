@@ -4,6 +4,7 @@ from django.test import TestCase
 from django_mailer import (constants, engine, settings, send_mail,
                            send_html_mail)
 from django_mailer.engine import send_queued_message
+from django_mailer.tests.exceptions import DeferOnError
 from django_mailer.models import Blacklist, Log, QueuedMessage
 from django_mailer.lockfile import FileLock
 
@@ -230,3 +231,20 @@ class ErrorHandlingTest(TestCase):
         engine.send_queued_message(queued_message)
         self.assertEqual(queued_message.deferred, None)
     
+    def test_defer_on_errors_setting(self):
+        """
+        Defer queued mail on user defined exception.
+        """
+        old_errors = settings.DEFER_ON_ERRORS
+        settings.DEFER_ON_ERRORS = (DeferOnError,)
+        
+        # If we see some other random errors email shouldn't be deferred
+        old_backend = django_settings.EMAIL_BACKEND
+        django_settings.EMAIL_BACKEND = \
+            'django_mailer.tests.base.DeferOnErrorBackend'
+        send_mail('Subject', 'Body', 'from@example.com', ['to1@example.com'])
+        queued_message = QueuedMessage.objects.latest('id')
+        engine.send_queued_message(queued_message)
+        queued_message = QueuedMessage.objects.latest('id')
+        self.assertNotEqual(queued_message.deferred, None)
+        settings.DEFER_ON_ERRORS = old_errors

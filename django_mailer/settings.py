@@ -1,4 +1,9 @@
+import smtplib
+from socket import error as SocketError
+
 from django.conf import settings
+from django.utils.importlib import import_module
+
 from django_mailer import constants
 
 # Provide a way of temporarily pausing the sending of mail.
@@ -25,3 +30,30 @@ LOCK_WAIT_TIMEOUT = max(getattr(settings, "MAILER_LOCK_WAIT_TIMEOUT", 0), 0)
 # An optional alternate lock path, potentially useful if you have multiple
 # projects running on the same server.
 LOCK_PATH = getattr(settings, "MAILER_LOCK_PATH", None)
+
+# Should be an interable containing dotted path to exceptions
+# e.g: DEFER_ON_ERRORS = ('mail_backend.Exception1', 'mail_backend.Exception2')
+
+error_paths = getattr(settings, 'MAILER_DEFER_ON_ERRORS', ())
+
+if error_paths:
+    errors = []
+    for path in error_paths:
+        try:
+            mod_name, klass_name = path.rsplit('.', 1)
+            mod = import_module(mod_name)
+            try:
+                klass = getattr(mod, klass_name)
+            except AttributeError:
+                raise ImproperlyConfigured(('Module "%s" does not define a '
+                                            '"%s" class' % (mod_name, klass_name)))
+            errors.append(klass)
+        except ImportError, e:
+            raise ImproperlyConfigured(('Error importing error class %s: "%s"'
+                                % (mod_name, e)))
+    DEFER_ON_ERRORS = tuple(errors)
+
+else:
+    # Default errors that cause mails to be deferred
+    DEFER_ON_ERRORS = (SocketError, smtplib.SMTPSenderRefused,
+        smtplib.SMTPRecipientsRefused, smtplib.SMTPAuthenticationError)

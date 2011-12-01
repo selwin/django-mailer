@@ -207,11 +207,7 @@ def send_message(message, connection=None):
         result = constants.RESULT_SENT
         log_message = 'Sent'
     except Exception, err:
-        # Defer emails if errors require manual intervention to fix
-        fatal_errors = (SocketError, smtplib.SMTPSenderRefused,
-                        smtplib.SMTPRecipientsRefused,
-                        smtplib.SMTPAuthenticationError)
-        if isinstance(err, fatal_errors):
+        if isinstance(err, settings.DEFER_ON_ERRORS):
             message.queuedmessage.defer()
         logger.warning("Message to %s deferred due to failure: %s" %
                         (message.to_address.encode("utf-8"), err))

@@ -1,0 +1,2 @@
+class DeferOnError(Exception):
+	pass
