@@ -25,7 +25,7 @@ LOCK_PATH = settings.LOCK_PATH or os.path.join(tempfile.gettempdir(),
 logger = logging.getLogger('django_mailer.engine')
 
 
-def _message_queue(block_size):
+def _message_queue(block_size, exclude_messages=[]):
     """
     A generator which iterates queued messages in blocks so that new
     prioritised messages can be inserted during iteration of a large number of
@@ -35,7 +35,8 @@ def _message_queue(block_size):
 
     """
     def get_block():
-        queue = models.QueuedMessage.objects.non_deferred().select_related()
+        queue = models.QueuedMessage.objects.non_deferred() \
+            .exclude(pk__in=exclude_messages).select_related()
         if block_size:
             queue = queue[:block_size]
         return queue
@@ -79,6 +80,9 @@ def send_all(block_size=500, backend=None):
 
     sent = deferred = skipped = 0
 
+    # A list of messages to be sent, usually contains messages that failed
+    exclude_messages = []
+
     try:
         if constants.EMAIL_BACKEND_SUPPORT:
             connection = get_connection(backend=backend)
@@ -86,13 +90,15 @@ def send_all(block_size=500, backend=None):
             connection = get_connection()
         blacklist = models.Blacklist.objects.values_list('email', flat=True)
         connection.open()
-        for message in _message_queue(block_size):
+        for message in _message_queue(block_size, exclude_messages=exclude_messages):
             result = send_queued_message(message, connection=connection,
                                   blacklist=blacklist)
             if result == constants.RESULT_SENT:
                 sent += 1
             elif result == constants.RESULT_FAILED:
                 deferred += 1
+                # Don't try to send this message again for now
+                exclude_messages.append(message.pk)
             elif result == constants.RESULT_SKIPPED:
                 skipped += 1
         connection.close()
