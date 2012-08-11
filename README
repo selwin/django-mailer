@@ -1,3 +1,1 @@
-django-mailer-2 by Chris Beaven (a fork of James Tauber's django-mailer)
-
-A reusable Django app for queuing the sending of email
+This fork is no longer maintained. Please see https://github.com/ui/django-post_office instead.
